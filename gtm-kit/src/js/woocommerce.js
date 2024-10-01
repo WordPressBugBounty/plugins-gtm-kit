@@ -82,7 +82,7 @@ function gtmkitLoad() {
 
 		if (
 			eventTargetElement.closest(
-				'.add_to_cart_button.ajax_add_to_cart:not(.single_add_to_cart_button)'
+				window.gtmkit_settings.wc.css_selectors.product_list_add_to_cart
 			)
 		) {
 			event = 'add_to_cart';
@@ -99,7 +99,7 @@ function gtmkitLoad() {
 		}
 
 		const productElement = eventTargetElement.closest(
-			'.product,.wc-block-grid__product'
+			window.gtmkit_settings.wc.css_selectors.product_list_element
 		);
 		const productData =
 			productElement &&
@@ -123,7 +123,7 @@ function gtmkitLoad() {
 				items: [itemData],
 			},
 		});
-	});
+	}, true);
 
 	// add_to_cart event on product page
 	document.addEventListener('click', function (e) {
@@ -256,7 +256,7 @@ function gtmkitLoad() {
 				},
 			});
 		}
-	});
+	}, true);
 
 	// remove_from_cart event on cart remove links
 	document.addEventListener('click', function (e) {
@@ -284,7 +284,7 @@ function gtmkitLoad() {
 				items: [itemData],
 			},
 		});
-	});
+	}, true);
 
 	// select_item event on clicks in product lists
 	document.addEventListener('click', function (e) {
@@ -292,8 +292,12 @@ function gtmkitLoad() {
 		const linkElement = eventTargetElement.closest( window.gtmkit_settings.wc.css_selectors.product_list_select_item );
 		if (!linkElement) return true;
 
+		if ( window.gtmkit_settings.wc.css_selectors.product_list_exclude && linkElement.closest(window.gtmkit_settings.wc.css_selectors.product_list_exclude)) {
+			return true;
+		}
+
 		const product = eventTargetElement.closest(
-			'.product,.wc-block-grid__product'
+			window.gtmkit_settings.wc.css_selectors.product_list_element
 		);
 
 		let productData;
@@ -325,7 +329,7 @@ function gtmkitLoad() {
 				items: [itemData],
 			},
 		});
-	});
+	}, true);
 
 	// track product variations on product page
 	// eslint-disable-next-line no-undef
