@@ -3,7 +3,7 @@ Contributors: tlamedia, torbenlundsgaard, gtmkit
 Donate link: https://github.com/tlamedia/gtm-kit
 Tags: google tag manager, gtm, woocommerce, analytics, ga4
 Tested up to: 6.6
-Stable tag: 2.1.0
+Stable tag: 2.2.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -31,8 +31,9 @@ The following GA4 events are automatically included in the dataLayer:
 - add_payment_info
 - purchase
 - refund **[Premium]**
+- order_paid **[Premium]**
 
-Unlock all features with [GTM Kit Woo Add-On](https://jump.gtmkit.com/link/2-30DDC).
+Unlock all features with [GTM Kit Woo Add-On](https://woocommerce.com/products/gtm-kit-woo-add-on/).
 
 ### Easy Digital Downloads
 - view_item
@@ -91,6 +92,18 @@ Yes! Pagespeed is one of our main focus points, and we strive to make the plugin
 
 == Changelog ==
 
+= 2.2.0 =
+
+Release date: 2024-10-16
+
+Find out about what's new in our [our release post](https://gtmkit.com/gtm-kit-2-2/).
+
+#### Enhancements:
+* Added notifications and warnings for missing GTM container, debug log usage, auto-update and event inspector usage. These improvements aim to ensure smooth production operations.
+
+#### Other:
+* Minor refactoring
+
 = 2.1.0 =
 
 Release date: 2024-10-01
@@ -132,52 +145,11 @@ Find out about what else is new in our [our release post](https://gtmkit.com/gtm
 * Require WooCommerce 8.3.
 * Require PHP 7.4.
 
-= 1.23.3 =
-
-Release date: 2024-08-22
-
-#### Bugfixes:
-* Prevent fatal errors caused by invalid filter input from third-party plugins.
-* In WordPress versions prior to 6.6, the options pages fail to load due to a missing dependency.
-
-= 1.23.2 =
-
-Release date: 2024-08-13
-
-#### Other:
-* Require WooCommerce 8.2.
-* Tested up to WooCommerce 9.2.
-
-= 1.23.1 =
-
-Release date: 2024-07-15
-
-#### Enhancements:
-* The 'Getting Started' section the setup wizard has been updated with new content.
-
-#### Bugfixes:
-* The settings were not saved correctly in multisite installations.
-* An upgrade function was causing problems for multisite installations leading lost configuration.
-
-#### Other:
-* The load priority of the script 'gtmkit-js-before' has been lowered from 1 to 5 to allow user to register scripts before.
-
-= 1.23 =
-
-Release date: 2024-07-04
-
-Find out about what's new in our [our release post](https://gtmkit.com/gtm-kit-1-23/).
-
-#### Enhancements:
-* Added an option to exclude selected user roles from tracking.
-* Improve the flexibility of GTM Kit integrations.
-
-#### Other:
-* Tested up to WooCommerce 9.1.
-* Tested up to WordPress 6.6.
-
 
 == Upgrade Notice ==
 
 = 2.0 =
 Starting with GTM Kit version 2.0, the add_to_wishlist event is no longer supported in the free version of GTM Kit.
+
+= Earlier versions =
+For the changelog of earlier versions, please refer to [the changelog on gtmkit.com](https://gtmkit.com/changelog/).
