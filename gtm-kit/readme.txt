@@ -3,7 +3,7 @@ Contributors: tlamedia, torbenlundsgaard, gtmkit
 Donate link: https://github.com/tlamedia/gtm-kit
 Tags: google tag manager, gtm, woocommerce, analytics, ga4
 Tested up to: 6.7
-Stable tag: 2.2.1
+Stable tag: 2.2.2
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -91,6 +91,14 @@ Yes! We strive to support the full feature set of Google Analytics 4 and will im
 Yes! Pagespeed is one of our main focus points, and we strive to make the plugin compatible with full page caching.
 
 == Changelog ==
+
+= 2.2.2 =
+
+Release date: 2024-12-03
+
+#### Other:
+* Tested up to WooCommerce 9.4.
+* Tested up to PHP 8.4.
 
 = 2.2.1 =
 
