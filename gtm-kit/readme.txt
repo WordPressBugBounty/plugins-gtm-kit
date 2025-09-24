@@ -3,7 +3,7 @@ Contributors: tlamedia, torbenlundsgaard, gtmkit
 Donate link: https://github.com/tlamedia/gtm-kit
 Tags: google tag manager, gtm, woocommerce, analytics, ga4
 Tested up to: 6.8
-Stable tag: 2.5.1
+Stable tag: 2.6.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -95,6 +95,17 @@ Yes! Pagespeed is one of our main focus points, and we strive to make the plugin
 You can report security bugs through the Patchstack Vulnerability Disclosure Program. The Patchstack team help validate, triage and handle any security vulnerabilities. [Report a security vulnerability.](https://patchstack.com/database/vdp/gtm-kit)
 
 == Changelog ==
+
+= 2.6.0 =
+
+Release date: 2025-09-24
+
+#### Enhancements:
+* Add tracking on the product collection block.
+
+#### Other:
+* Tested up to WooCommerce 10.2.
+* Require WooCommerce 9.2.
 
 = 2.5.1 =
 
