@@ -3,7 +3,7 @@ Contributors: tlamedia, torbenlundsgaard, gtmkit
 Donate link: https://github.com/tlamedia/gtm-kit
 Tags: google tag manager, gtm, woocommerce, analytics, ga4
 Tested up to: 7.0
-Stable tag: 2.8.4
+Stable tag: 2.9.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -96,7 +96,25 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 == Changelog ==
 
-= 2.8.3 =
+= 2.9.0 =
+
+Release date: 2026-04-29
+
+Find out about what's new in our [our release post](https://gtmkit.com/gtm-kit-2-9/).
+
+#### Enhancements:
+* Scope Google Consent Mode defaults to specific countries or regions (e.g. DK, DE, US-CA) instead of applying them everywhere. Useful for sites with visitors both inside and outside the EU.
+* Consent updates from other plugins or partner scripts can now talk to GTM Kit through a simple JavaScript API, making CMP integrations easier.
+
+#### Bugfixes:
+* Webhooks for Server-side Tracking on the WooCommerce integrations page no longer stay locked after entering an sGTM Container Domain on premium installs.
+
+#### Other:
+* "Wait For Update" is now a proper number field with a sensible 500 ms default on new installs. Your existing value is kept.
+* Clearer warning on the Consent Mode page — if Cookiebot, Complianz, CookieYes, or Cookie Information already handles your consent, leave this setting off.
+* Introduced an internal automated test suite (PHPUnit + Vitest) and continuous integration across PHP 7.4–8.4 × WordPress 6.9. No functional change — every future release is now verified by unit and integration tests before shipping, raising the bar on quality and reliability.
+
+= 2.8.4 =
 
 Release date: 2026-04-23
 
@@ -139,37 +157,6 @@ Release date: 2026-01-29
 #### Other:
 * Tested up to WooCommerce 10.5.
 * Require WooCommerce 9.5.
-
-= 2.7.0 =
-
-Release date: 2026-01-06
-
-Find out about what's new in our [our release post](https://gtmkit.com/gtm-kit-2-7/).
-
-#### Enhancements:
-* We have added a new template assistant to help you create your own custom templates for Google Tag Manager.
-* Add option to define a custom page that should be detected as the order-received page.
-* The debug info now includes a check to determine if WooCommerce purchase events have been recorded in the logs. This information is included in the debug data to assist with troubleshooting and support.
-
-#### Bugfixes:
-* Fix edge case where quantity in the Datalayer was 0. Set a default quantity of 1 when the quantity element is missing.
-
-#### Other:
-* Tested up to WooCommerce 10.4.
-* Tested up to WordPress 6.9.
-* Require WooCommerce 9.4.
-* Require WordPress 6.7.
-
-= 2.6.0 =
-
-Release date: 2025-09-24
-
-#### Enhancements:
-* Add tracking on the product collection block.
-
-#### Other:
-* Tested up to WooCommerce 10.4.
-* Require WooCommerce 9.2.
 
 
 = Earlier versions =
