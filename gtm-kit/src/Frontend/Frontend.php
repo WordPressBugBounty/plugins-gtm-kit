@@ -8,6 +8,7 @@
 namespace TLA_Media\GTM_Kit\Frontend;
 
 use TLA_Media\GTM_Kit\Options\Options;
+use TLA_Media\GTM_Kit\Options\OptionSchema;
 
 /**
  * Frontend
@@ -29,13 +30,40 @@ final class Frontend {
 	protected string $datalayer_name;
 
 	/**
+	 * Consent signal source registry.
+	 *
+	 * @var ConsentSignalSourceRegistry
+	 */
+	protected ConsentSignalSourceRegistry $signal_source_registry;
+
+	/**
+	 * Event deferral gate.
+	 *
+	 * @var EventDeferralGate
+	 */
+	protected EventDeferralGate $event_deferral_gate;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param Options $options An instance of Options.
+	 * The registry and deferral gate default to fresh instances when
+	 * not supplied so existing call sites (`new Frontend( $options )`)
+	 * keep working; the bootstrap in `inc/main.php` wires explicit
+	 * services for the production request lifecycle.
+	 *
+	 * @param Options                          $options An instance of Options.
+	 * @param ConsentSignalSourceRegistry|null $signal_source_registry Optional pre-built registry.
+	 * @param EventDeferralGate|null           $event_deferral_gate    Optional pre-built deferral gate.
 	 */
-	public function __construct( Options $options ) {
-		$this->options        = $options;
-		$this->datalayer_name = ( $this->options->get( 'general', 'datalayer_name' ) ) ? $this->options->get( 'general', 'datalayer_name' ) : 'dataLayer';
+	public function __construct(
+		Options $options,
+		?ConsentSignalSourceRegistry $signal_source_registry = null,
+		?EventDeferralGate $event_deferral_gate = null
+	) {
+		$this->options                = $options;
+		$this->datalayer_name         = ( $this->options->get( 'general', 'datalayer_name' ) ) ? $this->options->get( 'general', 'datalayer_name' ) : 'dataLayer';
+		$this->signal_source_registry = $signal_source_registry ?? new ConsentSignalSourceRegistry( $options );
+		$this->event_deferral_gate    = $event_deferral_gate ?? new EventDeferralGate( $this->signal_source_registry );
 	}
 
 	/**
@@ -54,7 +82,8 @@ final class Frontend {
 		}
 
 		if ( $container_active && $page->is_user_allowed() ) {
-			add_action( 'wp_enqueue_scripts', [ $page, 'enqueue_header_script' ] );
+			// Priority 6 so 'gtmkit-container' is registered before any dependent script (WP 6.9.1 validates deps at enqueue time).
+			add_action( 'wp_enqueue_scripts', [ $page, 'enqueue_header_script' ], 6 );
 		} elseif ( $options->get( 'general', 'console_log' ) ) {
 			add_action( 'wp_head', [ $page, 'container_disabled' ] );
 		}
@@ -93,28 +122,6 @@ final class Frontend {
 		}
 
 		/**
-		 * Per-category Consent Mode v2 default state.
-		 *
-		 * Filters are applied even when the master toggle is off, so an
-		 * integrator can force-enable via {@see 'gtmkit_consent_default_settings_enabled'}
-		 * without editing the admin UI.
-		 *
-		 * @param array<string, 'granted'|'denied'> $consent_defaults The seven-category state.
-		 */
-		$consent_defaults = apply_filters(
-			'gtmkit_consent_default_state',
-			[
-				'ad_personalization'      => $this->options->get( 'general', 'gcm_ad_personalization' ) ? 'granted' : 'denied',
-				'ad_storage'              => $this->options->get( 'general', 'gcm_ad_storage' ) ? 'granted' : 'denied',
-				'ad_user_data'            => $this->options->get( 'general', 'gcm_ad_user_data' ) ? 'granted' : 'denied',
-				'analytics_storage'       => $this->options->get( 'general', 'gcm_analytics_storage' ) ? 'granted' : 'denied',
-				'personalization_storage' => $this->options->get( 'general', 'gcm_personalization_storage' ) ? 'granted' : 'denied',
-				'functionality_storage'   => $this->options->get( 'general', 'gcm_functionality_storage' ) ? 'granted' : 'denied',
-				'security_storage'        => $this->options->get( 'general', 'gcm_security_storage' ) ? 'granted' : 'denied',
-			]
-		);
-
-		/**
 		 * Region codes the consent defaults apply to.
 		 *
 		 * @param array<int, string> $consent_region Zero or more ISO region codes (e.g. `DK`, `DE-BY`, `US-CA`).
@@ -140,14 +147,50 @@ final class Frontend {
 			(bool) $this->options->get( 'general', 'gcm_default_settings' )
 		);
 
+		/**
+		 * Per-category Consent Mode v2 default state.
+		 *
+		 * Resolved through the signal source registry so Premium add-ons
+		 * (WP Consent API integration, named CMP integrations) can plug
+		 * in alternative state providers via the
+		 * {@see 'gtmkit_consent_signal_sources'} filter. The default
+		 * `gtmkit_default` source delegates to the legacy
+		 * {@see 'gtmkit_consent_default_state'} filter, so existing
+		 * integrations keep working unchanged.
+		 *
+		 * The registry is only consulted when the master toggle is on.
+		 * When off, the consent block is suppressed entirely so a CMP
+		 * or GTM-based consent solution can own the flow without
+		 * double-firing.
+		 *
+		 * @var array<string, string> $consent_defaults
+		 */
+		$consent_defaults = [
+			'ad_personalization'      => 'denied',
+			'ad_storage'              => 'denied',
+			'ad_user_data'            => 'denied',
+			'analytics_storage'       => 'denied',
+			'personalization_storage' => 'denied',
+			'functionality_storage'   => 'denied',
+			'security_storage'        => 'denied',
+		];
+		if ( $consent_enabled ) {
+			$resolved_state = $this->signal_source_registry->read_state();
+			if ( null !== $resolved_state ) {
+				$consent_defaults = $resolved_state;
+			}
+		}
+
 		$wait_for_update    = (int) $this->options->get( 'general', 'gcm_wait_for_update' );
 		$ads_data_redaction = (bool) $this->options->get( 'general', 'gcm_ads_data_redaction' );
 		$url_passthrough    = (bool) $this->options->get( 'general', 'gcm_url_passthrough' );
 
 		// Build the inner body of gtag('consent', 'default', { ... }) so the
 		// conditional wait_for_update and region fields don't leak template
-		// whitespace into the rendered script.
-		$consent_lines = [];
+		// whitespace into the rendered script. Also build a categories-only
+		// body for the window.gtmkit.consent.state surface, which holds the
+		// seven Consent Mode v2 categories and nothing else.
+		$category_lines = [];
 		foreach (
 			[
 				'ad_personalization',
@@ -159,12 +202,15 @@ final class Frontend {
 				'security_storage',
 			] as $category
 		) {
-			$consent_lines[] = sprintf(
+			$category_lines[] = sprintf(
 				"'%s': '%s'",
 				$category,
 				esc_js( (string) ( $consent_defaults[ $category ] ?? 'denied' ) )
 			);
 		}
+		$consent_state_body = implode( ",\n\t\t\t\t", $category_lines );
+
+		$consent_lines = $category_lines;
 		if ( $wait_for_update > 0 ) {
 			$consent_lines[] = "'wait_for_update': " . $wait_for_update;
 		}
@@ -195,7 +241,21 @@ final class Frontend {
 		}
 		window.gtmkit = window.gtmkit || {};
 		window.gtmkit.consent = {
+			state: {
+				<?php
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $consent_state_body is built above from hardcoded category keys and esc_js()-escaped 'granted'/'denied' literals only (no region/wait_for_update). Re-escaping would corrupt the embedded quotes.
+				echo $consent_state_body;
+				?>
+
+			},
 			update: function (state) {
+				if (state && typeof state === 'object') {
+					for (var k in state) {
+						if (Object.prototype.hasOwnProperty.call(state, k)) {
+							window.gtmkit.consent.state[k] = state[k];
+						}
+					}
+				}
 				if (typeof gtag !== 'undefined') {
 					gtag('consent', 'update', state);
 				}
@@ -217,6 +277,16 @@ final class Frontend {
 	public function enqueue_datalayer_content(): void {
 
 		$datalayer_data = apply_filters( 'gtmkit_datalayer_content', [] );
+		if ( ! is_array( $datalayer_data ) ) {
+			$datalayer_data = [];
+		}
+
+		// Ask the deferral gate before pushing. A Premium-only event deferral queue can return true here
+		// when consent is missing for the categories this event requires; default returns false.
+		$event_name = isset( $datalayer_data['event'] ) && is_string( $datalayer_data['event'] ) ? $datalayer_data['event'] : '';
+		if ( $this->event_deferral_gate->should_defer( $event_name, $datalayer_data ) ) {
+			return;
+		}
 
 		$script  = 'const gtmkit_dataLayer_content = ' . wp_json_encode( $datalayer_data ) . ";\n";
 		$script .= esc_attr( $this->datalayer_name ) . '.push( gtmkit_dataLayer_content );' . "\n";
@@ -271,12 +341,71 @@ final class Frontend {
 		wp_register_script( 'gtmkit-container', '', [ 'gtmkit' ], GTMKIT_VERSION, [ 'in_footer' => false ] );
 		wp_enqueue_script( 'gtmkit-container' );
 		wp_add_inline_script( 'gtmkit-container', $script );
+
+		$this->maybe_enqueue_consent_gating_shim();
+	}
+
+	/**
+	 * Enqueue the consent-gating shim when the gating mode is strong_block.
+	 *
+	 * The shim is a small vanilla-JS file that listens for
+	 * `gtmkit:consent:updated` and re-injects the masked GTM container as
+	 * text/javascript once the required consent categories are granted.
+	 * Loaded in <head> after gtmkit-container so the masked <script> element
+	 * is in the DOM by the time the shim runs its initial check.
+	 */
+	private function maybe_enqueue_consent_gating_shim(): void {
+		if ( $this->options->get( 'general', 'consent_gating_mode' ) !== OptionSchema::GATING_MODE_STRONG_BLOCK ) {
+			return;
+		}
+
+		/**
+		 * Consent categories that must be `granted` before the strong-block
+		 * shim will unmask the GTM container. Default: analytics_storage and
+		 * ad_storage, the two categories most GTM containers depend on.
+		 *
+		 * @param array<int, string> $required_categories Consent Mode v2 category names.
+		 */
+		$required_categories = apply_filters(
+			'gtmkit_strong_block_required_categories',
+			[ 'analytics_storage', 'ad_storage' ]
+		);
+		if ( ! is_array( $required_categories ) ) {
+			$required_categories = [ 'analytics_storage', 'ad_storage' ];
+		}
+		$required_categories = array_values( array_filter( $required_categories, 'is_string' ) );
+
+		wp_register_script(
+			'gtmkit-consent-gating',
+			GTMKIT_URL . 'assets/frontend/consent-gating.js',
+			[ 'gtmkit-container' ],
+			GTMKIT_VERSION,
+			[ 'in_footer' => false ]
+		);
+		wp_localize_script(
+			'gtmkit-consent-gating',
+			'gtmkitConsentGating',
+			[
+				'requiredCategories' => $required_categories,
+				// Used by the shim to scope its "GTM already booted" check
+				// to our specific container id, so unrelated globals
+				// (gtag.js for an Ads pixel, debug inspectors) cannot
+				// short-circuit the unmask path.
+				'containerId'        => (string) $this->options->get( 'general', 'gtm_id' ),
+			]
+		);
+		wp_enqueue_script( 'gtmkit-consent-gating' );
 	}
 
 	/**
 	 * This script fires the 'delay_js' event in Google Tag Manager
 	 */
 	public function enqueue_delay_js_script(): void {
+
+		$payload = [ 'event' => 'load_delayed_js' ];
+		if ( $this->event_deferral_gate->should_defer( 'load_delayed_js', $payload ) ) {
+			return;
+		}
 
 		$script = esc_attr( $this->datalayer_name ) . '.push({"event" : "load_delayed_js"});' . "\n";
 
@@ -330,17 +459,63 @@ final class Frontend {
 				return $attributes;
 			}
 
-			$script_attributes = apply_filters(
-				'gtmkit_header_script_attributes',
-				[
-					'data-cfasync'       => 'false',
-					'data-nowprocket'    => '',
-					'data-cookieconsent' => 'ignore',
-				]
-			);
+			// Always-on cache-plugin compatibility attributes. These are
+			// not consent-related and stay on regardless of CMP setup.
+			$built = [
+				'data-cfasync'    => 'false',
+				'data-nowprocket' => '',
+			];
+
+			// CMP attributes from the cmp_script_attributes setting. The
+			// setting is the source of truth for the named CMPs and the
+			// custom slot; the gtmkit_header_script_attributes filter
+			// below stays a third-party extension point and runs after
+			// this build, so user-land filters can still override or add
+			// attributes.
+			$cmp = $this->options->get( 'general', 'cmp_script_attributes' );
+			if ( ! is_array( $cmp ) ) {
+				$cmp = [];
+			}
+			if ( ! empty( $cmp['cookiebot'] ) ) {
+				$built['data-cookieconsent'] = 'ignore';
+			}
+			if ( ! empty( $cmp['iubenda'] ) ) {
+				$built['data-cmp-ab'] = '1';
+			}
+			if ( ! empty( $cmp['cookieyes'] ) ) {
+				$built['data-cookie-consent'] = 'ignore';
+			}
+			if ( ! empty( $cmp['custom']['name'] ) ) {
+				// The sanitiser already strips disallowed characters at
+				// save time. Re-strip here as a defence-in-depth guard
+				// for legacy or filter-injected values that bypassed it.
+				$custom_name = (string) preg_replace(
+					OptionSchema::CMP_CUSTOM_NAME_PATTERN,
+					'',
+					(string) $cmp['custom']['name']
+				);
+				if ( '' !== $custom_name ) {
+					$built[ $custom_name ] = isset( $cmp['custom']['value'] ) ? (string) $cmp['custom']['value'] : '';
+				}
+			}
+
+			$script_attributes = apply_filters( 'gtmkit_header_script_attributes', $built );
 
 			foreach ( $script_attributes as $attribute_name => $value ) {
 				$attributes[ $attribute_name ] = $value;
+			}
+
+			// Strong-block: mask the GTM container script so the browser
+			// will not execute it until the consent-gating shim re-injects
+			// it as text/javascript. CMP attributes from above stay on
+			// the masked script (they are inert while type=text/plain)
+			// so a CMP that recognises them can also unblock.
+			if (
+				strpos( $attributes['id'], 'gtmkit-container' ) === 0
+				&& $this->options->get( 'general', 'consent_gating_mode' ) === OptionSchema::GATING_MODE_STRONG_BLOCK
+			) {
+				$attributes['type']              = 'text/plain';
+				$attributes['data-gtmkit-gated'] = '1';
 			}
 		}
 

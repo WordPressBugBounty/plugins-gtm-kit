@@ -17,6 +17,70 @@ use TLA_Media\GTM_Kit\Common\Util;
 final class OptionSchema {
 
 	/**
+	 * Script gating mode: GTM loads on every page (current behavior).
+	 *
+	 * @var string
+	 */
+	public const GATING_MODE_ALWAYS_LOAD = 'always_load';
+
+	/**
+	 * Script gating mode: GTM loads but starts in denied state via Consent Mode.
+	 * Same on-page emission as always_load; future event-deferral features may
+	 * change runtime behavior under this mode.
+	 *
+	 * @var string
+	 */
+	public const GATING_MODE_WEAK_BLOCK = 'weak_block';
+
+	/**
+	 * Script gating mode: GTM is masked as text/plain and only executes after
+	 * consent for the required categories has been granted.
+	 *
+	 * @var string
+	 */
+	public const GATING_MODE_STRONG_BLOCK = 'strong_block';
+
+	/**
+	 * All valid values for the script gating mode option, in canonical order.
+	 *
+	 * @var array<int, string>
+	 */
+	public const GATING_MODES = [
+		self::GATING_MODE_ALWAYS_LOAD,
+		self::GATING_MODE_WEAK_BLOCK,
+		self::GATING_MODE_STRONG_BLOCK,
+	];
+
+	/**
+	 * Allowed-character class for the custom CMP attribute name. HTML5
+	 * permits a wider set, but real-world CMP-blocking attributes use
+	 * `data-*` patterns with this safe subset; staying restrictive avoids
+	 * escaping bugs.
+	 *
+	 * @var string
+	 */
+	public const CMP_CUSTOM_NAME_PATTERN = '/[^a-zA-Z0-9_-]/';
+
+	/**
+	 * Default value for the cmp_script_attributes option on fresh installs
+	 * with no detected CMP. Activation overrides for fresh installs where
+	 * a CMP plugin is detected; the upgrade routine overrides to keep
+	 * Cookiebot on for upgraders to preserve the previously hardcoded
+	 * behavior.
+	 *
+	 * @var array<string, mixed>
+	 */
+	public const CMP_SCRIPT_ATTRIBUTES_DEFAULT = [
+		'cookiebot' => false,
+		'iubenda'   => false,
+		'cookieyes' => false,
+		'custom'    => [
+			'name'  => '',
+			'value' => '',
+		],
+	];
+
+	/**
 	 * Get schema for all options
 	 *
 	 * @return array<string, array<string, mixed>>
@@ -156,6 +220,26 @@ final class OptionSchema {
 				'type'     => 'array',
 				'sanitize' => [ self::class, 'sanitize_region_codes' ],
 				'validate' => [ self::class, 'validate_region_codes' ],
+			],
+
+			// Script gating mode (always_load | weak_block | strong_block).
+			// Default 'always_load' preserves the pre-2.10 emission for every existing install.
+			'consent_gating_mode'         => [
+				'default'  => self::GATING_MODE_ALWAYS_LOAD,
+				'type'     => 'string',
+				'validate' => [ self::class, 'validate_enum', self::GATING_MODES ],
+			],
+
+			// CMP script attribute support.
+			// Default has all named-CMP toggles off and an empty custom slot.
+			// Activation pre-selects a detected CMP for fresh installs; the
+			// upgrade routine seeds Cookiebot=true for upgraders to preserve
+			// the previously hardcoded behavior.
+			'cmp_script_attributes'       => [
+				'default'  => self::CMP_SCRIPT_ATTRIBUTES_DEFAULT,
+				'type'     => 'array',
+				'sanitize' => [ self::class, 'sanitize_cmp_script_attributes' ],
+				'validate' => [ self::class, 'validate_cmp_script_attributes' ],
 			],
 		];
 	}
@@ -299,6 +383,17 @@ final class OptionSchema {
 	}
 
 	/**
+	 * Validate value is one of an allowed set.
+	 *
+	 * @param mixed         $value          Value to validate.
+	 * @param array<string> $allowed_values Allowed values for the option.
+	 * @return bool
+	 */
+	public static function validate_enum( $value, array $allowed_values ): bool {
+		return in_array( $value, $allowed_values, true );
+	}
+
+	/**
 	 * Regular expression for Consent Mode v2 region codes.
 	 *
 	 * ISO 3166-1 alpha-2 with optional ISO 3166-2 subdivision, per Google's
@@ -349,6 +444,52 @@ final class OptionSchema {
 	 * @return bool
 	 */
 	public static function validate_region_codes( $value ): bool {
+		return is_array( $value );
+	}
+
+	/**
+	 * Sanitize the cmp_script_attributes value to the canonical structure.
+	 *
+	 * Normalizes the toggles to bools, the custom slot to an array with
+	 * `name` and `value` strings, and strips disallowed characters from
+	 * the custom name so a malformed payload from the admin REST endpoint
+	 * cannot leak unsafe attributes into the rendered <script> tag.
+	 *
+	 * @param mixed $value Raw value from the request.
+	 * @return array<string, mixed>
+	 */
+	public static function sanitize_cmp_script_attributes( $value ): array {
+		$defaults = self::CMP_SCRIPT_ATTRIBUTES_DEFAULT;
+		if ( ! is_array( $value ) ) {
+			return $defaults;
+		}
+
+		$custom_input = isset( $value['custom'] ) && is_array( $value['custom'] ) ? $value['custom'] : [];
+		$custom_name  = isset( $custom_input['name'] ) ? (string) $custom_input['name'] : '';
+		$custom_name  = (string) preg_replace( self::CMP_CUSTOM_NAME_PATTERN, '', $custom_name );
+
+		return [
+			'cookiebot' => ! empty( $value['cookiebot'] ),
+			'iubenda'   => ! empty( $value['iubenda'] ),
+			'cookieyes' => ! empty( $value['cookieyes'] ),
+			'custom'    => [
+				'name'  => $custom_name,
+				'value' => isset( $custom_input['value'] ) ? (string) $custom_input['value'] : '',
+			],
+		];
+	}
+
+	/**
+	 * Validate the cmp_script_attributes value.
+	 *
+	 * Accepts any array; structure is normalized by
+	 * {@see self::sanitize_cmp_script_attributes()}. Rejects non-array
+	 * values so the save pipeline fails fast.
+	 *
+	 * @param mixed $value Value to validate.
+	 * @return bool
+	 */
+	public static function validate_cmp_script_attributes( $value ): bool {
 		return is_array( $value );
 	}
 }
