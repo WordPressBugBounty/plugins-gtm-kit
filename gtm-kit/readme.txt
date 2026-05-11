@@ -2,8 +2,9 @@
 Contributors: tlamedia, torbenlundsgaard, gtmkit
 Donate link: https://github.com/tlamedia/gtm-kit
 Tags: google tag manager, gtm, woocommerce, analytics, ga4
+Requires at least: 6.8
 Tested up to: 7.0
-Stable tag: 2.10.0
+Stable tag: 2.11.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -95,6 +96,34 @@ Yes! Pagespeed is one of our main focus points, and we strive to make the plugin
 You can report security bugs through the Patchstack Vulnerability Disclosure Program. The Patchstack team help validate, triage and handle any security vulnerabilities. [Report a security vulnerability.](https://patchstack.com/database/vdp/gtm-kit)
 
 == Changelog ==
+
+= 2.11.0 =
+
+Release date: 2026-05-11
+
+Find out about what's new in our [our release post](https://gtmkit.com/gtm-kit-2-11/).
+
+#### New:
+* "Exclude tax" toggle now controls every standard e-commerce event the data layer emits: `view_cart`, `begin_checkout`, `purchase`, variation prices on variable product pages (re-fired `view_item` + `add_to_cart`), and the per-item coupon `discount` field.
+
+#### Bugfixes:
+* Cart, checkout, variation, and coupon-discount events now follow the "Exclude tax" toggle consistently across `value`, `price`, and `discount` fields. The GTM Kit Woo and GTM Kit Premium add-ons extend the fix to refund and order-paid events in their paired releases.
+* Silence the "translation loading triggered too early" notice that WordPress 6.7+ logs against the `gtm-kit` text domain by registering translations at the very start of `init` before any other code can request a translated string.
+* Close an edge case where a script-dependency notice could still appear under WordPress 6.9.1+ when a consent or CMP plugin toggled the GTM Kit container active mid-request, by asking the WordPress script registry directly which scripts were actually registered instead of re-evaluating the container gate.
+
+#### Other:
+* Heads up: GA4 numbers may move after this update. Stores with prices entered ex-tax and tax-inclusive cart display will see `value` change from ex-tax to inc-tax in cart and checkout events.
+* New `gtmkit_resolve_tax_mode` and `gtmkit_resolve_item_discount` filters let developers override the toggle programmatically (per-event or per-context) and override the per-item coupon discount calculation.
+* Minimum required WordPress version is now 6.8 (was 6.7). Sites still on WordPress 6.7 won't get this update via the dashboard until they upgrade WordPress.
+
+= 2.10.1 =
+
+Release date: 2026-05-07
+
+Tag-only follow-up to 2.10.0 — completes the consent admin-badge surface alongside the React renderer that already shipped in 2.10.0. See the [2.10 release post](https://gtmkit.com/gtm-kit-2-10/) for the broader context.
+
+#### New:
+* New `gtmkit_consent_admin_badges` filter lets add-ons (e.g. Premium's WP Consent API integration) push status banners onto the Consent settings page so users see immediately when a higher-priority consent source has taken over.
 
 = 2.10.0 =
 
