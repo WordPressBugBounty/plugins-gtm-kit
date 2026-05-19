@@ -4,7 +4,7 @@ Donate link: https://github.com/tlamedia/gtm-kit
 Tags: google tag manager, gtm, woocommerce, analytics, ga4
 Requires at least: 6.8
 Tested up to: 7.0
-Stable tag: 2.11.0
+Stable tag: 2.12.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -96,6 +96,23 @@ Yes! Pagespeed is one of our main focus points, and we strive to make the plugin
 You can report security bugs through the Patchstack Vulnerability Disclosure Program. The Patchstack team help validate, triage and handle any security vulnerabilities. [Report a security vulnerability.](https://patchstack.com/database/vdp/gtm-kit)
 
 == Changelog ==
+
+= 2.12.0 =
+
+Release date: 2026-05-19
+
+Find out about what's new in our [our release post](https://gtmkit.com/gtm-kit-2-12/).
+
+#### New:
+* New welcome modal greets fresh installs on their first GTM Kit admin page and links to the documentation. Existing installs are not interrupted.
+* GTM Kit can now surface launch and upgrade announcements from gtmkit.com without a plugin release.
+
+#### Bugfixes:
+* Prevent a fatal error on WooCommerce shop and archive pages when another plugin (e.g. WP Grid Builder) re-runs the product loop without a current product in context. GTM Kit now skips its hidden product-data tag instead of crashing the page.
+* No more "headers already sent" PHP warning when running WP-CLI commands on sites that use the Cookie Keeper option.
+
+#### Other:
+* New `gtmkit_introductions` filter and `Introduction_Interface` contract let add-ons register their own announcement modals through a documented public API.
 
 = 2.11.0 =
 
