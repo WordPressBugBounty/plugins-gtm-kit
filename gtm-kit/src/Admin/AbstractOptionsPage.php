@@ -86,6 +86,11 @@ abstract class AbstractOptionsPage {
 
 	/**
 	 * Adds the admin page to the menu.
+	 *
+	 * The settings shell owns in-app navigation, so the concrete top-level page
+	 * overrides this to register a single menu entry. The default submenu
+	 * registration is kept concrete so add-ons that subclass this base against
+	 * an older core (and do not override it) keep loading without a fatal.
 	 */
 	public function add_admin_page(): void {
 		add_submenu_page(
